@@ -20,7 +20,7 @@ class RoundNavigationTabsWidget @JvmOverloads constructor(
         buttonsLayout?.setArcRadius(value)
     }
 
-    private val horizontalPadding = 80
+    private val horizontalPadding = 160
     private var buttonsLayout: RoundNavigationButtonsLayout? = null
     private var arcView: RoundNavigationTabsArcView? = null
 

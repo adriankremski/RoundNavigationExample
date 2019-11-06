@@ -8,6 +8,19 @@ import android.view.animation.OvershootInterpolator
 import androidx.core.graphics.withRotation
 import java.lang.StrictMath.pow
 import kotlin.math.*
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.R.attr.bitmap
+import android.opengl.ETC1.getHeight
+import android.opengl.ETC1.getWidth
+import android.opengl.ETC1.getHeight
+import android.opengl.ETC1.getWidth
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+
+
+
+
 
 
 class RoundNavigationTabsArcView @JvmOverloads constructor(
@@ -24,6 +37,7 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
     private val tabIndicatorStartCornersPaint = Paint()
     private val tabIndicatorEndCornersPaint = Paint()
     private val backgroundPaint = Paint()
+    private val shadowGradientPaint = Paint()
 
     private val viewBoundsRect = RectF()
 
@@ -33,8 +47,13 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
     private val backgroundStartColor = Color.parseColor("#cfcfcf")
     private val backgroundEndColor = Color.parseColor("#f0f0f0")
 
+    private val shadowGradientStartColor = Color.parseColor("#44FFFFFF")
+    private val shadowGradientEndColor = Color.parseColor("#00FFFFFF")
+
     private var tabIndicatorGradient: RadialGradient? = null
     private var backgroundGradient: RadialGradient? = null
+    private var shadowGradient: RadialGradient? = null
+    private var gradientBitmap: Bitmap? = null
 
     init {
         initPaints()
@@ -59,7 +78,27 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
         tabIndicatorEndCornersPaint.isAntiAlias = true
         tabIndicatorEndCornersPaint.style = Paint.Style.FILL_AND_STROKE
 
+        shadowGradientPaint.strokeWidth = 10f
+        shadowGradientPaint.isAntiAlias = true
+        shadowGradientPaint.style = Paint.Style.FILL_AND_STROKE
+
         setLayerType(LAYER_TYPE_HARDWARE, null)
+
+        gradientBitmap =  drawableToBitmap(getResources().getDrawable(R.drawable.ic_favorite_24dp, null))
+    }
+
+    fun drawableToBitmap(drawable: Drawable): Bitmap {
+
+        if (drawable is BitmapDrawable) {
+            return drawable.bitmap
+        }
+
+        val bitmap = Bitmap.createBitmap(100, (arcRadius/2).toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+
+        return bitmap
     }
 
     fun setArcRadius(value: Float) {
@@ -95,6 +134,43 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
 
         drawArcStartCap(canvas)
         drawArcEndCap(canvas)
+
+        val centerCoordinatesExtraDistance = 40f
+        val startShadowCenterCoordinates = calculateArcCornerPoints(startAngle + sweepAngle * 2/3)
+        val endShadowCenterCoordinates = calculateArcCornerPoints(startAngle + sweepAngle / 2)
+
+        drawIconGradientShadow(
+            canvas,
+            gradientCenterX = startShadowCenterCoordinates.startX - centerCoordinatesExtraDistance,
+            gradientCenterY = startShadowCenterCoordinates.startY - centerCoordinatesExtraDistance
+        )
+
+        drawIconGradientShadow(
+            canvas,
+            gradientCenterX = endShadowCenterCoordinates.endX + centerCoordinatesExtraDistance,
+            gradientCenterY = endShadowCenterCoordinates.endY - centerCoordinatesExtraDistance
+        )
+
+    }
+
+    private fun drawIconGradientShadow(
+        canvas: Canvas,
+        gradientCenterX: Float,
+        gradientCenterY: Float
+    ) {
+
+
+        val gradient = RadialGradient(
+            gradientCenterX,
+            gradientCenterY,
+            arcRadius * 3/4,
+            shadowGradientStartColor,
+            shadowGradientEndColor,
+            Shader.TileMode.CLAMP
+        )
+
+        shadowGradientPaint.shader = gradient
+        canvas.drawCircle(gradientCenterX, gradientCenterY, arcRadius , shadowGradientPaint)
     }
 
     private fun createViewRadialGradient(startColor: Int, endColor: Int) = RadialGradient(
@@ -104,10 +180,22 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
 
     private fun drawArcStartCap(canvas: Canvas) {
         val arcPoints = calculateArcCornerPoints(startAngle)
-        canvas.withRotation(arcPoints.angleRelativeToHorizontalAxis(), arcPoints.startX, arcPoints.startY) {
-            val cornersRect = RectF(arcPoints.startX + 5, arcPoints.startY - 10f, arcPoints.startX + arcRadius - 5, arcPoints.startY + 20)
+        canvas.withRotation(
+            arcPoints.angleRelativeToHorizontalAxis(),
+            arcPoints.startX,
+            arcPoints.startY
+        ) {
+            val cornersRect = RectF(
+                arcPoints.startX + 5,
+                arcPoints.startY - 10f,
+                arcPoints.startX + arcRadius - 5,
+                arcPoints.startY + 20
+            )
 
-            val distanceToCenter = Point(arcPoints.startX.toInt(), arcPoints.startY.toInt()) distanceTo Point(width / 2, height / 2)
+            val distanceToCenter = Point(
+                arcPoints.startX.toInt(),
+                arcPoints.startY.toInt()
+            ) distanceTo Point(width / 2, height / 2)
 
             val rotatedGradientCenterX = arcPoints.startX + distanceToCenter
             val rotatedGradientCenterY = arcPoints.startY
@@ -118,7 +206,12 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
             )
 
             tabIndicatorStartCornersPaint.shader = gradient
-            canvas.drawRoundRect(cornersRect, arcCornersRadius, arcCornersRadius, tabIndicatorStartCornersPaint)
+            canvas.drawRoundRect(
+                cornersRect,
+                arcCornersRadius,
+                arcCornersRadius,
+                tabIndicatorStartCornersPaint
+            )
         }
     }
 
@@ -135,10 +228,22 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
 
     private fun drawArcEndCap(canvas: Canvas) {
         val arcPoints = calculateArcCornerPoints(startAngle + 80)
-        canvas.withRotation(arcPoints.angleRelativeToHorizontalAxis(), arcPoints.startX, arcPoints.startY) {
-            val cornersRect = RectF(arcPoints.startX + 5, arcPoints.startY - 10f, arcPoints.startX + arcRadius - 5, arcPoints.startY + 20)
+        canvas.withRotation(
+            arcPoints.angleRelativeToHorizontalAxis(),
+            arcPoints.startX,
+            arcPoints.startY
+        ) {
+            val cornersRect = RectF(
+                arcPoints.startX + 5,
+                arcPoints.startY - 10f,
+                arcPoints.startX + arcRadius - 5,
+                arcPoints.startY + 20
+            )
 
-            val distanceToCenter = Point(arcPoints.startX.toInt(), arcPoints.startY.toInt()) distanceTo Point(width / 2, height / 2)
+            val distanceToCenter = Point(
+                arcPoints.startX.toInt(),
+                arcPoints.startY.toInt()
+            ) distanceTo Point(width / 2, height / 2)
 
             val rotatedGradientCenterX = arcPoints.startX + distanceToCenter
             val rotatedGradientCenterY = arcPoints.startY
@@ -149,7 +254,12 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
             )
 
             tabIndicatorEndCornersPaint.shader = gradient
-            canvas.drawRoundRect(cornersRect, arcCornersRadius, arcCornersRadius, tabIndicatorEndCornersPaint)
+            canvas.drawRoundRect(
+                cornersRect,
+                arcCornersRadius,
+                arcCornersRadius,
+                tabIndicatorEndCornersPaint
+            )
         }
     }
 
@@ -160,10 +270,16 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
         val endY: Float
     ) {
 
-        fun angleRelativeToHorizontalAxis() = (atan2(endY - startY, endX - startX) * 180 / PI).toFloat()
+        fun angleRelativeToHorizontalAxis() =
+            (atan2(endY - startY, endX - startX) * 180 / PI).toFloat()
     }
 
     private infix fun Point.distanceTo(anotherPoint: Point): Float {
-        return sqrt(pow((this.x - anotherPoint.x).toDouble(), 2.0) + pow((this.y - anotherPoint.y).toDouble(), 2.0)).toFloat()
+        return sqrt(
+            pow(
+                (this.x - anotherPoint.x).toDouble(),
+                2.0
+            ) + pow((this.y - anotherPoint.y).toDouble(), 2.0)
+        ).toFloat()
     }
 }
