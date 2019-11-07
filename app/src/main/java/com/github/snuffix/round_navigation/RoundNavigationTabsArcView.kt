@@ -8,25 +8,14 @@ import android.view.animation.OvershootInterpolator
 import androidx.core.graphics.withRotation
 import java.lang.StrictMath.pow
 import kotlin.math.*
-import android.graphics.BitmapFactory
-import android.graphics.Bitmap
-import android.R.attr.bitmap
-import android.opengl.ETC1.getHeight
-import android.opengl.ETC1.getWidth
-import android.opengl.ETC1.getHeight
-import android.opengl.ETC1.getWidth
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
-
-
-
-
 
 
 class RoundNavigationTabsArcView @JvmOverloads constructor(
-    private var arcRadius: Float = 230f,
+    private var arcRadius: Float,
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    private val animationDuration = 500L
 
     private val startAngle = 160f
     private val sweepAngle = 80f
@@ -52,53 +41,27 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
 
     private var tabIndicatorGradient: RadialGradient? = null
     private var backgroundGradient: RadialGradient? = null
-    private var shadowGradient: RadialGradient? = null
-    private var gradientBitmap: Bitmap? = null
 
     init {
         initPaints()
     }
 
     private fun initPaints() {
-        tabIndicatorPaint.strokeWidth = arcRadius
-        tabIndicatorPaint.isAntiAlias = true
+        tabIndicatorPaint.preparePaint(strokeRadius = arcRadius, strokeStyle = Paint.Style.STROKE)
         tabIndicatorPaint.strokeCap = Paint.Cap.BUTT
-        tabIndicatorPaint.pathEffect = CornerPathEffect(arcRadius);
-        tabIndicatorPaint.style = Paint.Style.STROKE
 
-        backgroundPaint.strokeWidth = arcRadius
-        backgroundPaint.isAntiAlias = true
-        backgroundPaint.style = Paint.Style.STROKE
-
-        tabIndicatorStartCornersPaint.strokeWidth = 10f
-        tabIndicatorStartCornersPaint.isAntiAlias = true
-        tabIndicatorStartCornersPaint.style = Paint.Style.FILL_AND_STROKE
-
-        tabIndicatorEndCornersPaint.strokeWidth = 10f
-        tabIndicatorEndCornersPaint.isAntiAlias = true
-        tabIndicatorEndCornersPaint.style = Paint.Style.FILL_AND_STROKE
-
-        shadowGradientPaint.strokeWidth = 10f
-        shadowGradientPaint.isAntiAlias = true
-        shadowGradientPaint.style = Paint.Style.FILL_AND_STROKE
+        backgroundPaint.preparePaint(strokeRadius = arcRadius, strokeStyle = Paint.Style.STROKE)
+        tabIndicatorStartCornersPaint.preparePaint(strokeRadius = 10f, strokeStyle = Paint.Style.FILL_AND_STROKE)
+        tabIndicatorEndCornersPaint.preparePaint(strokeRadius = 10f, strokeStyle = Paint.Style.FILL_AND_STROKE)
+        shadowGradientPaint.preparePaint(strokeRadius = 10f, strokeStyle = Paint.Style.FILL_AND_STROKE)
 
         setLayerType(LAYER_TYPE_HARDWARE, null)
-
-        gradientBitmap =  drawableToBitmap(getResources().getDrawable(R.drawable.ic_favorite_24dp, null))
     }
 
-    fun drawableToBitmap(drawable: Drawable): Bitmap {
-
-        if (drawable is BitmapDrawable) {
-            return drawable.bitmap
-        }
-
-        val bitmap = Bitmap.createBitmap(100, (arcRadius/2).toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-
-        return bitmap
+    private fun Paint.preparePaint(strokeRadius: Float, strokeStyle: Paint.Style, isAntiAlias: Boolean = true) {
+        this.strokeWidth = strokeRadius
+        this.isAntiAlias = isAntiAlias
+        this.style = strokeStyle
     }
 
     fun setArcRadius(value: Float) {
@@ -109,7 +72,7 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
 
     fun selectTab(tabNumber: Int) {
         animate().rotation((tabRotation * tabNumber)).apply {
-            duration = 500
+            duration = animationDuration
             interpolator = OvershootInterpolator()
             start()
         }
@@ -136,7 +99,7 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
         drawArcEndCap(canvas)
 
         val centerCoordinatesExtraDistance = 40f
-        val startShadowCenterCoordinates = calculateArcCornerPoints(startAngle + sweepAngle * 2/3)
+        val startShadowCenterCoordinates = calculateArcCornerPoints(startAngle + sweepAngle * 2 / 3)
         val endShadowCenterCoordinates = calculateArcCornerPoints(startAngle + sweepAngle / 2)
 
         drawIconGradientShadow(
@@ -150,7 +113,6 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
             gradientCenterX = endShadowCenterCoordinates.endX + centerCoordinatesExtraDistance,
             gradientCenterY = endShadowCenterCoordinates.endY - centerCoordinatesExtraDistance
         )
-
     }
 
     private fun drawIconGradientShadow(
@@ -158,19 +120,17 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
         gradientCenterX: Float,
         gradientCenterY: Float
     ) {
-
-
         val gradient = RadialGradient(
             gradientCenterX,
             gradientCenterY,
-            arcRadius * 3/4,
+            arcRadius * 3 / 4,
             shadowGradientStartColor,
             shadowGradientEndColor,
             Shader.TileMode.CLAMP
         )
 
         shadowGradientPaint.shader = gradient
-        canvas.drawCircle(gradientCenterX, gradientCenterY, arcRadius , shadowGradientPaint)
+        canvas.drawCircle(gradientCenterX, gradientCenterY, arcRadius, shadowGradientPaint)
     }
 
     private fun createViewRadialGradient(startColor: Int, endColor: Int) = RadialGradient(
@@ -275,11 +235,6 @@ class RoundNavigationTabsArcView @JvmOverloads constructor(
     }
 
     private infix fun Point.distanceTo(anotherPoint: Point): Float {
-        return sqrt(
-            pow(
-                (this.x - anotherPoint.x).toDouble(),
-                2.0
-            ) + pow((this.y - anotherPoint.y).toDouble(), 2.0)
-        ).toFloat()
+        return sqrt(pow((this.x - anotherPoint.x).toDouble(), 2.0) + pow((this.y - anotherPoint.y).toDouble(), 2.0)).toFloat()
     }
 }

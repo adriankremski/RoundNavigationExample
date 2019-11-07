@@ -4,6 +4,7 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Point
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -46,9 +47,10 @@ class RoundNavigationButtonsLayout @JvmOverloads constructor(
     }
 
     private fun initButtons() {
-        buttonSize = (arcRadius * 7/12).toInt()
+        buttonSize = (arcRadius * 7 / 12).toInt()
+
         arcStartAngles.forEachIndexed { index, angle ->
-            createButtonImageView(index, angle)
+            addButtonImageView(index, angle)
         }
     }
 
@@ -59,29 +61,38 @@ class RoundNavigationButtonsLayout @JvmOverloads constructor(
         invalidate()
     }
 
-    private fun createButtonImageView(buttonNumber: Int, startAngle: Float) {
-        val angleInRadians = Math.toRadians((startAngle + 40).toDouble())
-        val centerX = width / 2 + ((width / 2 - arcRadius / 2) * cos(angleInRadians))
-        val centerY = width / 2 + ((width / 2 - arcRadius / 2) * sin(angleInRadians))
+    private fun addButtonImageView(buttonNumber: Int, startAngle: Float) {
+        ImageView(context).apply {
+            setOnClickListener { buttonClickListener?.invoke(buttonNumber) }
+            setImageResource(buttonImageResources[buttonNumber])
 
-        val buttonImageView = ImageView(context)
-        buttonImageView.setOnClickListener { buttonClickListener?.invoke(buttonNumber) }
-        buttonImageView.setImageResource(buttonImageResources[buttonNumber])
+            val buttonColor = if (buttonNumber == selectedButtonNumber) {
+                buttonSelectedColor
+            } else {
+                buttonUnselectedColor
+            }
 
-        val buttonColor = if (buttonNumber == selectedButtonNumber) {
-            buttonSelectedColor
-        } else {
-            buttonUnselectedColor
+            setColorFilter(buttonColor)
+            setPadding(buttonPadding, buttonPadding, buttonPadding, buttonPadding)
+            addView(this, createButtonParams(startAngle + 40))
         }
+    }
 
-        buttonImageView.setColorFilter(buttonColor)
-        buttonImageView.setPadding(buttonPadding, buttonPadding, buttonPadding, buttonPadding)
+    private fun createButtonParams(startAngle: Float): LayoutParams {
         val width = buttonSize + buttonPadding * 2
         val height = buttonSize + buttonPadding * 2
         val params = LayoutParams(width, height)
-        params.leftMargin = (centerX).toInt() - width / 2
-        params.topMargin = (centerY).toInt() - height / 2
-        addView(buttonImageView, params)
+        val center = calculateButtonCenter(startAngle)
+        params.leftMargin = center.x - width / 2
+        params.topMargin = center.y - height / 2
+        return params
+    }
+
+    private fun calculateButtonCenter(startAngle: Float): Point {
+        val angleInRadians = Math.toRadians((startAngle).toDouble())
+        val centerX = width / 2 + ((width / 2 - arcRadius / 2) * cos(angleInRadians))
+        val centerY = width / 2 + ((width / 2 - arcRadius / 2) * sin(angleInRadians))
+        return Point(centerX.toInt(), centerY.toInt())
     }
 
     fun setOnButtonClickListener(block: (Int) -> Unit) {
